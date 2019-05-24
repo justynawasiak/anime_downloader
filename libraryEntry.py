@@ -33,7 +33,8 @@ class LibraryEntry:
             print("Fetching rss feed {} ".format(rss_feed_url))
             rss_raw_entries = feedparser.parse(rss_feed_url)['entries']
 
-            for episode_no in range(self.progress + 1, self.anime.episode_count):
+            for episode_no in range(self.progress + 1, self.anime.episode_count+1):
+                print(episode_no)
                 if self.anime.is_movie:
                     regex = '.* {0}.*\.({1})$'.format(title, '|'.join(video_extensions))
                 else:
