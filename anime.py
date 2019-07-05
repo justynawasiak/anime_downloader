@@ -11,7 +11,7 @@ class Anime:
         self.is_movie = attribs['subtype'].lower() == 'movie'
         self.unreleased = attribs['status'].lower() == 'unreleased'
 
-        print("Anime: id {}, titles ({})".format(self.id, '; '.join(self.get_titles())))
+        print("Anime: id {}, released: {}, titles ({})".format(self.id, not self.unreleased, '; '.join(self.get_titles())))
 
     def get_titles(self):
         titles = [ ]
