@@ -35,13 +35,13 @@ class LibraryEntry:
 
             episode_count = self.anime.episode_count  #episode_count can be null in API
             if episode_count is None:
-                episode_count = self.progress + 2
+                episode_count = self.progress + 1
 
-            for episode_no in range(self.progress + 1, episode_count):
+            for episode_no in range(self.progress + 1, episode_count+1):
                 if self.anime.is_movie:
                     regex = '.* {0}.*\.({1})$'.format(title, '|'.join(video_extensions))
                 else:
-                    regex = '.* {0} - ({1:02d}|{1}).*\.({2})$'.format(title, episode_no, '|'.join(video_extensions))
+                    regex = '.* {0} (.* )?- ({1:02d}|{1}).*(\.({2}))?$'.format(title, episode_no, '|'.join(video_extensions))
 
                 episode_entries = []
 
