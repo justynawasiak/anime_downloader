@@ -14,15 +14,14 @@ class Anime:
         print("Anime: id {}, released: {}, titles ({})".format(self.id, not self.unreleased, '; '.join(self.get_titles())))
 
     def get_titles(self):
-        titles = [ ]
+        titles = []
         if not self.unreleased:
             if self.canonical_title: titles.append(self.canonical_title)
-            if self.titles:
-                for k, v in self.titles.items():
-                    titles.append(v)
-
             if self.abbreviated_titles: titles.extend(self.abbreviated_titles)
-            if self.slug: titles.append(self.slug)
+            #if self.titles:
+            #    for k, v in self.titles.items():
+            #        titles.append(v)
+            #if self.slug: titles.append(self.slug)
 
         seen = set()
         seen_add = seen.add

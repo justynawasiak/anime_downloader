@@ -16,8 +16,8 @@ class Library:
         for json_entry in results:
             try:
                 self.entries.append(LibraryEntry(json_entry))
-                #if json_entry['id'] in ('50313665'): #for 1 anime only
-                 #  self.entries.append(LibraryEntry(json_entry))
+                #if json_entry['id'] in ('52593802'): #for 1 anime only
+                #   self.entries.append(LibraryEntry(json_entry))
             except Exception as e:
                 print(e)
 

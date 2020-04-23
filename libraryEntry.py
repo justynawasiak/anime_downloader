@@ -31,8 +31,9 @@ class LibraryEntry:
         for title in titles:
             rss_feed_url = LibraryEntry.RSS_FEED_URL.format(urllib.parse.quote(title))
             print("Fetching rss feed {} ".format(rss_feed_url))
-            rss_raw_entries = feedparser.parse(rss_feed_url)['entries']
-            rss_channel_title = feedparser.parse(rss_feed_url)['channel']['title']
+            parsed_feed_url = feedparser.parse(rss_feed_url)
+            rss_raw_entries = parsed_feed_url['entries']
+            rss_channel_title = parsed_feed_url['channel']['title']
 
             episode_count = self.anime.episode_count  # episode_count can be null in API
             if episode_count is None:
@@ -52,16 +53,13 @@ class LibraryEntry:
                         if re.match(regex, rss_raw_entry.title):
                             print('Found a match for channel title pattern "{}": "{}", no: {}, "{}", {} seeds'.format(regex, title, episode_no, rss_raw_entry.title, rss_raw_entry.nyaa_seeders))
                             episode_entries.append(RSSEntry(rss_raw_entry))
-                            break
-                        if re.match(regex, rss_raw_entry.title):
-                            print('Found a match for entry title pattern "{}": "{}", no: {}, "{}", {} seeds'.format(regex, title,
-                                                                                                        episode_no,
-                                                                                                        rss_raw_entry.title,
-                                                                                                        rss_raw_entry.nyaa_seeders))
-                            episode_entries.append(RSSEntry(rss_raw_entry))
 
                 if episode_entries:
                     episode_entries.sort()
                     entries.append(episode_entries[0])
+                else:
+                    break #don't check higher episode count, as it is most possible that they are not released yet
 
+            if entries:
+                break #don't check other titles if one resulted in valid entries
         return entries
