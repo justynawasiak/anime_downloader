@@ -40,26 +40,26 @@ class LibraryEntry:
                 episode_count = self.progress + 1
 
             for episode_no in range(self.progress + 1, episode_count+1):
-                if self.anime.is_movie:
-                    regex = '.*\.({0})$'.format('|'.join(video_extensions))
-                else:
-                    regex = '.* - ({0:02d}|{1}).*(\.({1}))?$'.format(episode_no, '|'.join(video_extensions))
-
                 episode_entries = []
                 channel_title_regex = '.*- "{0}" -.*'.format(title)
 
+                if self.anime.is_movie:
+                    regex = '.*{0}.*\.({1})$'.format(title, '|'.join(video_extensions))
+                else:
+                    regex = '.* - ({0:02d}|{1}).*(\.({1}))?$'.format(episode_no, '|'.join(video_extensions))
+
                 for rss_raw_entry in rss_raw_entries:
-                    if re.match(channel_title_regex, rss_channel_title):
-                        if re.match(regex, rss_raw_entry.title):
-                            print('Found a match for channel title pattern "{}": "{}", no: {}, "{}", {} seeds'.format(regex, title, episode_no, rss_raw_entry.title, rss_raw_entry.nyaa_seeders))
+                    if re.match(channel_title_regex, re.sub(r'[\[\(\{]\w+?-?\s?\w+?[\]\)\}]', '', rss_channel_title)):  # removed all texts inside of brackets
+                        if re.match(regex, re.sub(r'[\[\(\{]\w+?-?\s?\w+?[\]\)\}]', '', rss_raw_entry.title)):
+                            print('Found a match for anime pattern "{}": "{}", no: {}, "{}", {} seeds'.format(regex, title, episode_no, rss_raw_entry.title, rss_raw_entry.nyaa_seeders))
                             episode_entries.append(RSSEntry(rss_raw_entry))
 
                 if episode_entries:
                     episode_entries.sort()
                     entries.append(episode_entries[0])
                 else:
-                    break #don't check higher episode count, as it is most possible that they are not released yet
+                    break  # don't check higher episode count, as it is most possible that they are not released yet
 
             if entries:
-                break #don't check other titles if one resulted in valid entries
+                break  # don't check other titles if one resulted in valid entries
         return entries

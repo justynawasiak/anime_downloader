@@ -16,8 +16,8 @@ class Library:
         for json_entry in results:
             try:
                 self.entries.append(LibraryEntry(json_entry))
-                #if json_entry['id'] in ('52593802'): #for 1 anime only
-                #   self.entries.append(LibraryEntry(json_entry))
+                #if json_entry['id'] in ('31101432'): #for 1 anime only
+                #    self.entries.append(LibraryEntry(json_entry))
             except Exception as e:
                 print(e)
 
@@ -44,8 +44,8 @@ class Library:
     def download_found_episode(self):
         for entry in self.entries:
             if entry.rss_entries:
-                first = entry.rss_entries[0]
-                print("Magnet link added to transmission: {}, {}, {}".format(first.get_rss_title(), first.get_magnet_link(), first.get_rss_seeders()))
+                for episode in entry.rss_entries:
+                    print("Magnet link added to transmission: {}, {}, {}".format(episode.get_rss_title(), episode.get_magnet_link(), episode.get_rss_seeders()))
 
-                tc = transmissionrpc.Client(self.config.get_transmission_server(), self.config.get_transmission_port(), self.config.get_transmission_username(), self.config.get_transmission_password())
-                tc.add_torrent(first.get_magnet_link())
+                    tc = transmissionrpc.Client(self.config.get_transmission_server(), self.config.get_transmission_port(), self.config.get_transmission_username(), self.config.get_transmission_password())
+                    tc.add_torrent(episode.get_magnet_link())
