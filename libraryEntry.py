@@ -33,7 +33,6 @@ class LibraryEntry:
             print("Fetching rss feed {} ".format(rss_feed_url))
             parsed_feed_url = feedparser.parse(rss_feed_url)
             rss_raw_entries = parsed_feed_url['entries']
-            rss_channel_title = parsed_feed_url['channel']['title']
 
             episode_count = self.anime.episode_count  # episode_count can be null in API
             if episode_count is None:
@@ -41,18 +40,17 @@ class LibraryEntry:
 
             for episode_no in range(self.progress + 1, episode_count+1):
                 episode_entries = []
-                channel_title_regex = '.*- "{0}" -.*'.format(title)
 
                 if self.anime.is_movie:
                     regex = '.*{0}.*\.({1})$'.format(title, '|'.join(video_extensions))
                 else:
-                    regex = '.* - ({0:02d}|{1}).*(\.({1}))?$'.format(episode_no, '|'.join(video_extensions))
+                    regex = '\s?{0} - (S\d+E)?({1:02d}|{1}).*(\.({2}))?$'.format(title, episode_no, '|'.join(video_extensions))
 
                 for rss_raw_entry in rss_raw_entries:
-                    if re.match(channel_title_regex, re.sub(r'[\[\(\{]\w+?-?\s?\w+?[\]\)\}]', '', rss_channel_title)):  # removed all texts inside of brackets
-                        if re.match(regex, re.sub(r'[\[\(\{]\w+?-?\s?\w+?[\]\)\}]', '', rss_raw_entry.title)):
-                            print('Found a match for anime pattern "{}": "{}", no: {}, "{}", {} seeds'.format(regex, title, episode_no, rss_raw_entry.title, rss_raw_entry.nyaa_seeders))
-                            episode_entries.append(RSSEntry(rss_raw_entry))
+                    cleaned_rss_title = re.sub(r'\s?[\[\(\{](.*?)[\]\)\}]\s?', '', rss_raw_entry.title)
+                    if re.match(regex, cleaned_rss_title):
+                        print('Found a match for anime pattern "{}": "{}", no: {}, "{}", {} seeds'.format(regex, title, episode_no, rss_raw_entry.title, rss_raw_entry.nyaa_seeders))
+                        episode_entries.append(RSSEntry(rss_raw_entry))
 
                 if episode_entries:
                     episode_entries.sort()
