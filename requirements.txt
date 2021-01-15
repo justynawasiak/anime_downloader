@@ -4,7 +4,6 @@ entrypoints==0.3
 feedparser==6.0.2
 idna==3.1
 keyring==21.8.0
-pprint==0.1
 pywin32-ctypes==0.2.0
 requests==2.25.1
 six==1.15.0

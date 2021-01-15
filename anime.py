@@ -4,7 +4,6 @@ class Anime:
         self.id = json['id']
         attribs = json['attributes']
         self.titles = attribs['titles']
-        self.slug = attribs['slug']
         self.canonical_title = attribs['canonicalTitle']
         self.abbreviated_titles = attribs['abbreviatedTitles']
         self.episode_count = attribs['episodeCount']
@@ -16,12 +15,8 @@ class Anime:
     def get_titles(self):
         titles = []
         if not self.unreleased:
-            if self.canonical_title: titles.append(self.canonical_title)
             if self.abbreviated_titles: titles.extend(self.abbreviated_titles)
-            #if self.titles:
-            #    for k, v in self.titles.items():
-            #        titles.append(v)
-            #if self.slug: titles.append(self.slug)
+            if self.canonical_title: titles.append(self.canonical_title)
 
         seen = set()
         seen_add = seen.add

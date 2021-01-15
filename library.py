@@ -16,12 +16,13 @@ class Library:
         for json_entry in results:
             try:
                 self.entries.append(LibraryEntry(json_entry))
-                #if json_entry['id'] in ('63291549'): #for 1 anime only
+                #if json_entry['id'] in ('63686658'): #for 1 anime only
                 #    self.entries.append(LibraryEntry(json_entry))
             except Exception as e:
                 print(e)
 
-    def get_user_id(self, username):
+    @staticmethod
+    def get_user_id(username):
         try:
             response_user_id = requests.get('https://kitsu.io/api/edge/users?filter[name]={}'.format(username))
             return response_user_id.json()['data'][0]['id']
