@@ -15,6 +15,9 @@ class Anime:
     def get_titles(self):
         titles = []
         if not self.unreleased:
+            if self.titles: titles.extend(self.titles.values())
+                #for lang, title in self.titles.items():
+                #    titles.extend(title)
             if self.abbreviated_titles: titles.extend(self.abbreviated_titles)
             if self.canonical_title: titles.append(self.canonical_title)
 
