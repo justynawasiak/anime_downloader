@@ -2,10 +2,13 @@ certifi==2020.12.5
 chardet==4.0.0
 entrypoints==0.3
 feedparser==6.0.2
-idna==3.1
-keyring==21.8.0
+idna==2.10
+importlib-metadata==3.7.3
+keyring==23.0.1
 pywin32-ctypes==0.2.0
 requests==2.25.1
+sgmllib3k==1.0.0
 six==1.15.0
 transmissionrpc==0.11
-urllib3==1.26.2
+urllib3==1.26.4
+zipp==3.4.1
