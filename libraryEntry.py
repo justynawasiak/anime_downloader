@@ -22,9 +22,9 @@ class LibraryEntry:
 
         anime_json = requests.get(anime_link).json()
         self.anime = Anime(anime_json['data'])
-        self.rss_entries = self.rss_find_entries_by_titles(self.anime.get_titles())
+        self.rss_entries = self._rss_find_entries_by_titles(self.anime.get_titles())
 
-    def rss_find_entries_by_titles(self, titles):
+    def _rss_find_entries_by_titles(self, titles):
         entries = []
         video_extensions = ['mkv', 'avi', 'mp4']
 
