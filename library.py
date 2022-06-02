@@ -1,3 +1,5 @@
+import sys
+
 import requests
 import transmissionrpc
 from libraryEntry import LibraryEntry
@@ -34,7 +36,12 @@ class Library:
         current_url = self.LIBRARY_ENTRIES_URL.format(self.user_id)
 
         while current_url:
-            response = requests.get(current_url).json()
+            res = requests.get(current_url)
+            if res.status_code != 200:
+                sys.exit("Api is unresponsive, try again later")
+
+            response = res.json()
+
             results.extend(response['data'])
             if 'links' in response and 'next' in response['links']:
                 current_url = response['links']['next']
