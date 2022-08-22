@@ -1,4 +1,5 @@
 import sys
+from time import sleep
 
 import requests
 import transmissionrpc
@@ -36,9 +37,14 @@ class Library:
         current_url = self.LIBRARY_ENTRIES_URL.format(self.user_id)
 
         while current_url:
-            res = requests.get(current_url)
+            for i in range(10):
+                res = requests.get(current_url)
+                if res.status_code == 200:
+                    break
+                sleep(2)
+
             if res.status_code != 200:
-                sys.exit("Api is unresponsive, try again later")
+                sys.exit(f"Api is unresponsive, try again later")
 
             response = res.json()
 
