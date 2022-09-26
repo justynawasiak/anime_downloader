@@ -27,7 +27,7 @@ class Library:
     @staticmethod
     def get_user_id(username):
         try:
-            response_user_id = requests.get('https://kitsu.io/api/edge/users?filter[name]={}'.format(username))
+            response_user_id = requests.get('https://kitsu.io/api/edge/users?filter[slug]={}'.format(username))
             return response_user_id.json()['data'][0]['id']
         except Exception as e:
             print(e)
