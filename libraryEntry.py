@@ -13,7 +13,7 @@ class LibraryEntry:
         self.id = json['id']
         self.progress = json['attributes']['progress']
         self.status = json['attributes']['status'].lower()
-        if self.status not in ['current', 'planned']:
+        if self.status not in ['current']: #, 'planned']:
             raise Exception()
         print("\nLibraryEntry: id {}, status {}, progress {}".format(self.id, self.status, self.progress))
 
