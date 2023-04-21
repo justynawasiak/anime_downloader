@@ -56,10 +56,15 @@ class Library:
         return results
 
     def download_found_episode(self):
+        tc = transmissionrpc.Client(self.config.get_transmission_server(), self.config.get_transmission_port(),
+                                    self.config.get_transmission_username(), self.config.get_transmission_password())
         for entry in self.entries:
             if entry.rss_entries:
                 for episode in entry.rss_entries:
-                    print("Magnet link added to transmission: {}, {}, {}".format(episode.get_rss_title(), episode.get_magnet_link(), episode.get_rss_seeders()))
-
-                    tc = transmissionrpc.Client(self.config.get_transmission_server(), self.config.get_transmission_port(), self.config.get_transmission_username(), self.config.get_transmission_password())
-                    tc.add_torrent(episode.get_magnet_link())
+                    try:
+                        tc.add_torrent(episode.get_magnet_link())
+                        print("Magnet link added to transmission: {}, {}, {}".format(episode.get_rss_title(),
+                                                                                     episode.get_magnet_link(),
+                                                                                     episode.get_rss_seeders()))
+                    except:
+                        print("Duplicated torrent, ignoring.")
