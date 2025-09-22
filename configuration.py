@@ -17,6 +17,17 @@ class Configuration:
         self.port = args.port
         self.kitsu_user = args.kitsu_user
 
+        # Set keyring backend explicitly for Windows
+        try:
+            import keyring.backends.Windows
+            keyring.set_keyring(keyring.backends.Windows.WinVaultKeyring())
+        except Exception:
+            try:
+                import keyrings.alt
+                keyring.set_keyring(keyrings.alt.file.PlaintextKeyring())
+            except Exception:
+                pass
+
     def get_transmission_password(self):
          transmission_password = keyring.get_password('anime_downloader', self.transmission_user)
          if not transmission_password:
