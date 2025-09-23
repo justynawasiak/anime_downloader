@@ -3,6 +3,7 @@ from time import sleep
 
 import requests
 import transmissionrpc
+import qbittorrentapi
 from libraryEntry import LibraryEntry
 
 
@@ -19,7 +20,7 @@ class Library:
         for json_entry in results:
             try:
                 self.entries.append(LibraryEntry(json_entry))
-                #if json_entry['id'] in ('50961939'): #for 1 anime only
+                # if json_entry['id'] in ('104297520'): # for 1 anime only
                 #    self.entries.append(LibraryEntry(json_entry))
             except Exception as e:
                 print(e)
@@ -56,15 +57,45 @@ class Library:
         return results
 
     def download_found_episode(self):
-        tc = transmissionrpc.Client(self.config.get_transmission_server(), self.config.get_transmission_port(),
-                                    self.config.get_transmission_username(), self.config.get_transmission_password())
-        for entry in self.entries:
-            if entry.rss_entries:
-                for episode in entry.rss_entries:
-                    try:
-                        tc.add_torrent(episode.get_magnet_link())
-                        print("Magnet link added to transmission: {}, {}, {}".format(episode.get_rss_title(),
-                                                                                     episode.get_magnet_link(),
-                                                                                     episode.get_rss_seeders()))
-                    except:
-                        print("Duplicated torrent, ignoring.")
+        client_type = self.config.get_torrent_client()
+        if client_type == 'transmission':
+            tc = transmissionrpc.Client(
+                self.config.get_transmission_server(),
+                self.config.get_transmission_port(),
+                self.config.get_transmission_username(),
+                self.config.get_transmission_password()
+            )
+            for entry in self.entries:
+                if entry.rss_entries:
+                    for episode in entry.rss_entries:
+                        try:
+                            tc.add_torrent(episode.get_magnet_link())
+                            print("Magnet link added to transmission: {}, {}, {}".format(
+                                episode.get_rss_title(),
+                                episode.get_magnet_link(),
+                                episode.get_rss_seeders()))
+                        except:
+                            print("Duplicated torrent, ignoring.")
+        elif client_type == 'qbittorrent':
+            qbt_client = qbittorrentapi.Client(
+                host=self.config.get_qbittorrent_host(),
+                port=self.config.get_qbittorrent_port(),
+                username=self.config.get_qbittorrent_user(),
+                password=self.config.get_qbittorrent_password()
+            )
+            try:
+                qbt_client.auth_log_in()
+            except qbittorrentapi.LoginFailed as e:
+                print(f"qBittorrent login failed: {e}")
+                return
+            for entry in self.entries:
+                if entry.rss_entries:
+                    for episode in entry.rss_entries:
+                        try:
+                            qbt_client.torrents_add(urls=episode.get_magnet_link())
+                            print("Magnet link added to qBittorrent: {}, {}, {}".format(
+                                episode.get_rss_title(),
+                                episode.get_magnet_link(),
+                                episode.get_rss_seeders()))
+                        except Exception as e:
+                            print(f"Error adding torrent to qBittorrent: {e}")

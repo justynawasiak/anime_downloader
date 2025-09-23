@@ -2,7 +2,7 @@
 
 Python project allowing to download latest anime episodes releases according to user's Kitsu library.
 It's checking "Currently watching" and "Planned to watched" titles and verifying if new, english-translated episodes are present in provided RSS feed.
-If yes, it's choosing best quality for episode and starting download with Transmissions server app.
+If yes, it's choosing best quality for episode and starting download with Transmission or qBittorrent server app (selectable).
 
 ## Project files
 - __Main__ -  Main file starting app, loading config class
@@ -13,4 +13,9 @@ If yes, it's choosing best quality for episode and starting download with Transm
 - __Configuration__ - initiates reading arguments during app launch. Adds password for transmission app to windows password manager.
 
 ## Running
---transmission_user=<transmission_username> --server=<transmission_server_name> --port=<transmission_ port_number> --kitsu_user=<kitsu_username>
+
+### Transmission example
+python main.py --transmission_user=transmission --server=localhost --port=9091 --kitsu_user=eranea --torrent_client=transmission
+
+### qBittorrent example
+python main.py --qbittorrent_host=localhost --qbittorrent_port=8080 --qbittorrent_user=qbt_user --qbittorrent_password=qbt_pass --kitsu_user=eranea --torrent_client=qbittorrent

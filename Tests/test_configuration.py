@@ -4,22 +4,29 @@ from unittest import mock
 from configuration import Configuration
 
 
+
 @mock.patch('argparse.ArgumentParser.parse_args',
-            return_value=argparse.Namespace(transmission_user='transmission_user1', server='server1', port=1111, kitsu_user='kitsu_user1'))
-def test_basic_config(mock_args, config_json):
+            return_value=argparse.Namespace(
+                transmission_user='transmission_user1', server='server1', port=1111, kitsu_user='kitsu_user1',
+                qbittorrent_host='localhost', qbittorrent_port=8080, qbittorrent_user='qbt_user', qbittorrent_password='qbt_pass', torrent_client='qbittorrent'))
+def test_basic_config_qbittorrent(mock_args):
     conf = Configuration()
-    assert conf.get_transmission_username() == config_json['transmission_user']
-    assert conf.get_transmission_server() == config_json['server']
-    assert conf.get_transmission_port() == config_json['port']
-    assert conf.get_kitsu_username() == config_json['kitsu_user']
+    assert conf.get_transmission_username() == 'transmission_user1'
+    assert conf.get_transmission_server() == 'server1'
+    assert conf.get_transmission_port() == 1111
+    assert conf.get_kitsu_username() == 'kitsu_user1'
+    assert conf.get_qbittorrent_host() == 'localhost'
+    assert conf.get_qbittorrent_port() == 8080
+    assert conf.get_qbittorrent_user() == 'qbt_user'
+    assert conf.get_qbittorrent_password() == 'qbt_pass'
+    assert conf.get_torrent_client() == 'qbittorrent'
 
 
-@mock.patch('keyring.get_password', return_value='password1')
 @mock.patch('argparse.ArgumentParser.parse_args',
-            return_value=argparse.Namespace(transmission_user='transmission_user1', server='server1', port=1111, kitsu_user='kitsu_user1'))
-def test_get_pass(mock_args, mock_args2):
+            return_value=argparse.Namespace(
+                transmission_user='transmission_user1', server='server1', port=1111, kitsu_user='kitsu_user1',
+                qbittorrent_host=None, qbittorrent_port=None, qbittorrent_user=None, qbittorrent_password=None, torrent_client='transmission'))
+def test_basic_config_transmission(mock_args):
     conf = Configuration()
-    password_to_set = 'password1'
-    mock.patch.object(builtins, 'input', lambda _: password_to_set)
-    assert conf.get_transmission_password() == password_to_set
+    assert conf.get_torrent_client() == 'transmission'
 

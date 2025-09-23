@@ -6,16 +6,26 @@ import keyring
 class Configuration:
     def __init__(self):
         parser = argparse.ArgumentParser()
-        parser.add_argument('--transmission_user', type=str)
         parser.add_argument('--server', type=str)
         parser.add_argument('--port', type=int)
         parser.add_argument('--kitsu_user', type=str)
+        parser.add_argument('--transmission_user', type=str)
+        parser.add_argument('--qbittorrent_host', type=str)
+        parser.add_argument('--qbittorrent_port', type=int)
+        parser.add_argument('--qbittorrent_user', type=str)
+        parser.add_argument('--qbittorrent_password', type=str)
+        parser.add_argument('--torrent_client', type=str, choices=['transmission', 'qbittorrent'], default='qbittorrent')
         args = parser.parse_args()
 
         self.transmission_user = args.transmission_user
         self.server = args.server
         self.port = args.port
         self.kitsu_user = args.kitsu_user
+        self.qbittorrent_host = args.qbittorrent_host
+        self.qbittorrent_port = args.qbittorrent_port
+        self.qbittorrent_user = args.qbittorrent_user
+        self.qbittorrent_password = args.qbittorrent_password
+        self.torrent_client = args.torrent_client
 
         # Set keyring backend explicitly for Windows
         try:
@@ -47,3 +57,21 @@ class Configuration:
 
     def get_kitsu_username(self):
         return self.kitsu_user
+
+    # ...existing code...
+        self.torrent_client = args.torrent_client
+
+    def get_qbittorrent_host(self):
+        return self.qbittorrent_host
+
+    def get_qbittorrent_port(self):
+        return self.qbittorrent_port
+
+    def get_qbittorrent_user(self):
+        return self.qbittorrent_user
+
+    def get_qbittorrent_password(self):
+        return self.qbittorrent_password
+
+    def get_torrent_client(self):
+        return self.torrent_client
