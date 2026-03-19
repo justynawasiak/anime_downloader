@@ -1,5 +1,6 @@
 import sys
 from time import sleep
+from urllib.parse import urlparse
 
 import requests
 import transmissionrpc
@@ -10,6 +11,13 @@ from libraryEntry import LibraryEntry
 class Library:
     def __init__(self, config):
         self.config = config
+        self.session = requests.Session()
+        self.session.headers.update(
+            {
+                "Accept": "application/vnd.api+json",
+                "User-Agent": "anime_downloader/1.0 (+https://kitsu.io)",
+            }
+        )
         self.LIBRARY_ENTRIES_URL = 'https://kitsu.io/api/edge/users/{}/library-entries?page%5Blimit%5D=500'
         self.user_id = self.get_user_id(config.get_kitsu_username())
         self.entries = []
@@ -19,29 +27,66 @@ class Library:
 
         for json_entry in results:
             try:
-                self.entries.append(LibraryEntry(json_entry))
+                try:
+                    self.entries.append(LibraryEntry(json_entry, session=self.session))
+                except TypeError as e:
+                    # Backwards compatibility if LibraryEntry signature doesn't accept `session`.
+                    if "unexpected keyword argument 'session'" in str(e):
+                        self.entries.append(LibraryEntry(json_entry))
+                    else:
+                        raise
                 # if json_entry['id'] in ('104297520'): # for 1 anime only
                 #    self.entries.append(LibraryEntry(json_entry))
             except Exception as e:
                 print(e)
 
     @staticmethod
-    def get_user_id(username):
+    def _is_allowed_kitsu_url(url):
         try:
-            response_user_id = requests.get('https://kitsu.io/api/edge/users?filter[slug]={}'.format(username))
-            return response_user_id.json()['data'][0]['id']
+            parsed = urlparse(url)
+        except Exception:
+            return False
+        if parsed.scheme != "https":
+            return False
+        if parsed.netloc not in {"kitsu.io", "edge.kitsu.io"}:
+            return False
+        if not parsed.path.startswith("/api/edge/"):
+            return False
+        return True
+
+    def get_user_id(self, username):
+        try:
+            response_user_id = self.session.get(
+                'https://kitsu.io/api/edge/users?filter[slug]={}'.format(username),
+                timeout=20,
+                allow_redirects=False,
+            )
+            response_user_id.raise_for_status()
+            data = response_user_id.json().get('data') or []
+            if not data:
+                sys.exit(f'Kitsu user not found: {username}')
+            return data[0]['id']
         except Exception as e:
             print(e)
 
     def download_library(self):
         results = []
         current_url = self.LIBRARY_ENTRIES_URL.format(self.user_id)
+        if not self._is_allowed_kitsu_url(current_url):
+            sys.exit("Invalid Kitsu URL")
 
         while current_url:
             for i in range(10):
-                res = requests.get(current_url)
+                res = self.session.get(current_url, timeout=30, allow_redirects=False)
                 if res.status_code == 200:
                     break
+                if res.status_code == 429:
+                    retry_after = res.headers.get("Retry-After")
+                    try:
+                        sleep(int(retry_after))
+                    except Exception:
+                        sleep(5)
+                    continue
                 sleep(2)
 
             if res.status_code != 200:
@@ -51,7 +96,12 @@ class Library:
 
             results.extend(response['data'])
             if 'links' in response and 'next' in response['links']:
-                current_url = response['links']['next']
+                next_url = response['links']['next']
+                if not next_url:
+                    break
+                if not self._is_allowed_kitsu_url(next_url):
+                    sys.exit("Invalid Kitsu pagination URL")
+                current_url = next_url
             else:
                 break
         return results

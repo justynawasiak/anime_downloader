@@ -50,7 +50,7 @@ def library_entry_json():
         'relationships': {
             'anime': {
                 'links': {
-                    'related': 'http://test.com'
+                    'related': 'https://kitsu.io/api/edge/anime/1'
                 }
             }
         }

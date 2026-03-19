@@ -1,17 +1,19 @@
 from unittest import mock
 
-import rssEntry
-from libraryEntry import LibraryEntry
 import requests_mock
 
+import rssEntry
+from libraryEntry import LibraryEntry
 
-@mock.patch('feedparser.parse', return_value={'entries': [type('rss_entry', (object,), {
-    'title': 'title1.mkv',
-    'link': 'rss_ink',
-    'nyaa_infohash': 'nyaa_unfihash',
-    'nyaa_seeders': '2'
-})]})
-def test_library_entry(feed_parser, library_entry_json):
+
+def test_library_entry(library_entry_json):
+    rss_entries = [type('rss_entry', (object,), {
+        'title': 'title1.mkv',
+        'link': 'rss_link',
+        'nyaa_infohash': 'nyaa_infohash',
+        'nyaa_seeders': '2'
+    })]
+
     with requests_mock.Mocker() as mr:
         anime_data = {
             'data': {
@@ -26,11 +28,14 @@ def test_library_entry(feed_parser, library_entry_json):
                 }
             }
         }
-        mr.get("http://test.com", json=anime_data)
-        le = LibraryEntry(library_entry_json)
+        mr.get("https://kitsu.io/api/edge/anime/1", json=anime_data)
+
+        with mock.patch.object(LibraryEntry, "_fetch_rss_entries", return_value=rss_entries):
+            le = LibraryEntry(library_entry_json)
+
         assert len(le.rss_entries) == 1
         entry = le.rss_entries[0]
-        mock_entry = feed_parser.return_value['entries'][0]
+        mock_entry = rss_entries[0]
         assert entry.rss_title == mock_entry.title
         assert entry.torrent_link == mock_entry.link
         assert entry.info_hash == mock_entry.nyaa_infohash
