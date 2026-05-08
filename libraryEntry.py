@@ -12,14 +12,15 @@ from rssEntry import RSSEntry
 
 class LibraryEntry:
     RSS_FEED_URL = 'https://nyaa.si/?page=rss&c=1_2&q={}'
+    ALLOWED_STATUSES = {'current', 'planned'}
 
     def __init__(self, json, session=None, **_kwargs):
         self.session = session or requests
         self.id = json['id']
         self.progress = json['attributes']['progress']
         self.status = json['attributes']['status'].lower()
-        if self.status not in ['current', 'planned']:
-            raise Exception()
+        if self.status not in self.ALLOWED_STATUSES:
+            raise ValueError(f"Skipping library entry {self.id} with status={self.status!r}")
         print("\nLibraryEntry: id {}, status {}, progress {}".format(self.id, self.status, self.progress))
 
         anime_link = json['relationships']['anime']['links']['related']
@@ -131,6 +132,23 @@ class LibraryEntry:
         return any(m in normalized_rss_title for m in markers)
 
     @staticmethod
+    def _season_marker_present_loose(raw_title, season_no):
+        """
+        Same as _season_marker_present but works on raw title and detects variants like:
+        '3rd season', 'season 3', 's03', etc.
+        """
+        if not season_no:
+            return True
+        t = (raw_title or "").casefold()
+        # Strip tag blocks to avoid false positives from groups/resolutions.
+        t = re.sub(r'\s?[\[\(\{<](.*?)[\]\)\}>]\s?', ' ', t)
+        return bool(
+            re.search(rf'\bseason\s*0*{season_no}\b', t)
+            or re.search(rf'\b0*{season_no}(st|nd|rd|th)\s*season\b', t)
+            or re.search(rf'\bs0*{season_no}\b', t)
+        )
+
+    @staticmethod
     def _title_has_episode(raw_title, episode_no, season_no=None):
         """
         Tries to detect episode patterns without being confused by 1080p/720p etc.
@@ -147,6 +165,10 @@ class LibraryEntry:
             s = int(m.group('s'))
             e = int(m.group('e'))
             if season_no and s != season_no:
+                return False
+            # If the release is explicitly tagged as a later season but we don't know the season,
+            # avoid matching it to a base-series entry (reduces wrong-season downloads).
+            if season_no is None and s > 1:
                 return False
             return e == episode_no
 
@@ -208,6 +230,8 @@ class LibraryEntry:
             return entries
 
         for title in titles:
+            if not isinstance(title, str) or not title.strip():
+                continue
             rss_feed_url = LibraryEntry.RSS_FEED_URL.format(urllib.parse.quote(title))
             print("Fetching rss feed {} ".format(rss_feed_url))
             rss_raw_entries = self._fetch_rss_entries(rss_feed_url)
@@ -216,6 +240,8 @@ class LibraryEntry:
 
             normalized_kitsu_title = self._normalize_kitsu_title(title)
             base_title, season_no = self._extract_base_and_season(normalized_kitsu_title)
+            if not (base_title or normalized_kitsu_title):
+                continue
 
             episode_count = self.anime.episode_count  # episode_count can be null in API
             if episode_count is None:
@@ -233,13 +259,12 @@ class LibraryEntry:
                         continue
 
                     strict_season = season_no and season_no > 1
-                    if strict_season and not self._season_marker_present(cleaned_rss_title, season_no):
-                        # If the query itself was season-specific, still allow matches without explicit markers.
-                        if ('season' in normalized_kitsu_title
-                                or re.search(r'\d(st|nd|rd|th)season', normalized_kitsu_title)
-                                or re.search(r'第\d{1,2}期', normalized_kitsu_title)):
-                            pass
-                        else:
+                    if strict_season:
+                        # Require an explicit season marker either in normalized title or raw title.
+                        if not (
+                                self._season_marker_present(cleaned_rss_title, season_no)
+                                or self._season_marker_present_loose(rss_raw_entry.title, season_no)
+                        ):
                             continue
 
                     if not self.anime.is_movie and not self._title_has_episode(
@@ -257,8 +282,9 @@ class LibraryEntry:
                     episode_entries.sort()
                     entries.append(episode_entries[0])
                 else:
-                    # don't check higher episode count, as it is most possible that they are not released yet
-                    break
+                    # Don't stop on the first gap: releases sometimes skip/rename early episodes,
+                    # use different numbering, or have specials; continue searching higher numbers.
+                    continue
 
             if entries:
                 # don't check other titles if one resulted in valid entries

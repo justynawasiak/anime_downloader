@@ -24,4 +24,17 @@ class Anime:
 
         seen = set()
         seen_add = seen.add
-        return [x for x in titles if not (x in seen or seen_add(x))]
+        filtered = []
+        for t in titles:
+            if not isinstance(t, str):
+                continue
+            t = t.strip()
+            if not t:
+                continue
+            # Avoid ultra-short titles which create very broad RSS matches.
+            if len(t) < 2:
+                continue
+            if t in seen or seen_add(t):
+                continue
+            filtered.append(t)
+        return filtered

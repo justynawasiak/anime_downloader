@@ -38,7 +38,7 @@ class Library:
                 # if json_entry['id'] in ('104297520'): # for 1 anime only
                 #    self.entries.append(LibraryEntry(json_entry))
             except Exception as e:
-                print(e)
+                print(f"Skipping entry: {e}")
 
     @staticmethod
     def _is_allowed_kitsu_url(url):
@@ -116,14 +116,22 @@ class Library:
                 self.config.get_transmission_password()
             )
             for entry in self.entries:
+                if getattr(entry, "status", "").lower() not in {"current", "planned"}:
+                    continue
                 if entry.rss_entries:
                     for episode in entry.rss_entries:
                         try:
                             tc.add_torrent(episode.get_magnet_link())
-                            print("Magnet link added to transmission: {}, {}, {}".format(
+                            print("Magnet link added to transmission (entry id={}, status={}): {}, {}, {}".format(
+                                getattr(entry, "id", "?"),
+                                getattr(entry, "status", "?"),
                                 episode.get_rss_title(),
                                 episode.get_magnet_link(),
                                 episode.get_rss_seeders()))
+                            print("  matched anime: id={}, title={}".format(
+                                getattr(getattr(entry, "anime", None), "id", "?"),
+                                getattr(getattr(entry, "anime", None), "canonical_title", "?"),
+                            ))
                         except:
                             print("Duplicated torrent, ignoring.")
         elif client_type == 'qbittorrent':
@@ -139,13 +147,21 @@ class Library:
                 print(f"qBittorrent login failed: {e}")
                 return
             for entry in self.entries:
+                if getattr(entry, "status", "").lower() not in {"current", "planned"}:
+                    continue
                 if entry.rss_entries:
                     for episode in entry.rss_entries:
                         try:
                             qbt_client.torrents_add(urls=episode.get_magnet_link())
-                            print("Magnet link added to qBittorrent: {}, {}, {}".format(
+                            print("Magnet link added to qBittorrent (entry id={}, status={}): {}, {}, {}".format(
+                                getattr(entry, "id", "?"),
+                                getattr(entry, "status", "?"),
                                 episode.get_rss_title(),
                                 episode.get_magnet_link(),
                                 episode.get_rss_seeders()))
+                            print("  matched anime: id={}, title={}".format(
+                                getattr(getattr(entry, "anime", None), "id", "?"),
+                                getattr(getattr(entry, "anime", None), "canonical_title", "?"),
+                            ))
                         except Exception as e:
                             print(f"Error adding torrent to qBittorrent: {e}")
