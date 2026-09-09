@@ -15,7 +15,7 @@ class LibraryEntry:
     ALLOWED_STATUSES = {'current', 'planned'}
 
     def __init__(self, json, session=None, **_kwargs):
-        self.session = session or requests
+        self.session = session or requests.Session()
         self.id = json['id']
         self.progress = json['attributes']['progress']
         self.status = json['attributes']['status'].lower()
@@ -209,32 +209,39 @@ class LibraryEntry:
         if not self._is_allowed_rss_url(url):
             return []
         try:
-            res = requests.get(
+            res = self.session.get(
                 url,
                 timeout=30,
                 allow_redirects=False,
-                headers={"User-Agent": "anime_downloader/1.0"},
+                headers={"User-Agent": "anime_downloader/1.0", "Accept": "application/rss+xml, application/xml"},
             )
             if res.status_code != 200:
-                return []
+                raise RuntimeError(f"RSS returned HTTP {res.status_code}; stopping this entry")
             if len(res.content) > 2_000_000:
                 return []
             parsed = feedparser.parse(res.content)
             return parsed.get("entries") or []
-        except Exception:
-            return []
+        except requests.RequestException as error:
+            raise RuntimeError("RSS request failed; stopping this entry") from error
 
     def _rss_find_entries_by_titles(self, titles):
         entries = []
         if not titles:
             return entries
 
+        rss_cache = {}
         for title in titles:
             if not isinstance(title, str) or not title.strip():
                 continue
-            rss_feed_url = LibraryEntry.RSS_FEED_URL.format(urllib.parse.quote(title))
-            print("Fetching rss feed {} ".format(rss_feed_url))
-            rss_raw_entries = self._fetch_rss_entries(rss_feed_url)
+            def get_rss_for_query(query):
+                rss_feed_url = LibraryEntry.RSS_FEED_URL.format(urllib.parse.quote(query))
+                if rss_feed_url in rss_cache:
+                    return rss_cache[rss_feed_url]
+                print("Fetching rss feed {} ".format(rss_feed_url))
+                rss_cache[rss_feed_url] = self._fetch_rss_entries(rss_feed_url)
+                return rss_cache[rss_feed_url]
+
+            rss_raw_entries = get_rss_for_query(title)
             if not rss_raw_entries:
                 continue
 
@@ -247,36 +254,75 @@ class LibraryEntry:
             if episode_count is None:
                 episode_count = self.progress + 1
 
+            latest_found_episode = self.progress
+            if not self.anime.is_movie:
+                for candidate in rss_raw_entries:
+                    normalized_candidate = self._normalize_rss_title(candidate.title)
+                    if (base_title or normalized_kitsu_title) not in normalized_candidate:
+                        continue
+                    if season_no and season_no > 1 and not (
+                            self._season_marker_present(normalized_candidate, season_no)
+                            or self._season_marker_present_loose(candidate.title, season_no)):
+                        continue
+                    for candidate_episode in range(self.progress + 1, episode_count + 1):
+                        if self._title_has_episode(candidate.title, candidate_episode, season_no):
+                            latest_found_episode = max(latest_found_episode, candidate_episode)
+                episode_count = latest_found_episode
+
             for episode_no in range(self.progress + 1, episode_count + 1):
                 episode_entries = []
                 title_token = base_title or normalized_kitsu_title
                 regex = '.*{}.*'.format(title_token)
 
-                for rss_raw_entry in rss_raw_entries:
-                    cleaned_rss_title = self._normalize_rss_title(rss_raw_entry.title)
+                def collect_episode_entries(candidate_entries):
+                    for rss_raw_entry in candidate_entries:
+                        cleaned_rss_title = self._normalize_rss_title(rss_raw_entry.title)
 
-                    if base_title and base_title not in cleaned_rss_title:
-                        continue
+                        if base_title and base_title not in cleaned_rss_title:
+                            continue
 
-                    strict_season = season_no and season_no > 1
-                    if strict_season:
-                        # Require an explicit season marker either in normalized title or raw title.
-                        if not (
-                                self._season_marker_present(cleaned_rss_title, season_no)
-                                or self._season_marker_present_loose(rss_raw_entry.title, season_no)
+                        strict_season = season_no and season_no > 1
+                        if strict_season:
+                            # Require an explicit season marker either in normalized title or raw title.
+                            if not (
+                                    self._season_marker_present(cleaned_rss_title, season_no)
+                                    or self._season_marker_present_loose(rss_raw_entry.title, season_no)
+                            ):
+                                continue
+
+                        if not self.anime.is_movie and not self._title_has_episode(
+                                rss_raw_entry.title, episode_no, season_no=season_no
                         ):
                             continue
 
-                    if not self.anime.is_movie and not self._title_has_episode(
-                            rss_raw_entry.title, episode_no, season_no=season_no
-                    ):
-                        continue
+                        if re.search(regex, cleaned_rss_title):
+                            print('Found a match for anime pattern "{}": "{}", no: {}, "{}" seeds'.format(
+                                regex, title, episode_no, rss_raw_entry.title
+                            ))
+                            episode_entries.append(RSSEntry(rss_raw_entry))
 
-                    if re.search(regex, cleaned_rss_title):
-                        print('Found a match for anime pattern "{}": "{}", no: {}, "{}" seeds'.format(
-                            regex, title, episode_no, rss_raw_entry.title
-                        ))
-                        episode_entries.append(RSSEntry(rss_raw_entry))
+                # First, scan the base query feed (usually contains the newest releases).
+                collect_episode_entries(rss_raw_entries)
+
+                # If older episodes are missing, Nyaa RSS may not include them in the base feed.
+                # Fallback to episode-specific queries to pull older items back into the result window.
+                if not episode_entries and not self.anime.is_movie:
+                    # Keep this short to avoid excessive requests: Nyaa RSS typically needs only
+                    # the episode number appended to bring older releases into the feed window.
+                    fallback_queries = [f"{title} {episode_no:02d}", f"{title} {episode_no}"]
+                    if season_no:
+                        fallback_queries.extend(
+                            [
+                                f"{title} S{season_no:02d}E{episode_no:02d}",
+                                f"{title} S{season_no}E{episode_no:02d}",
+                                f"{title} E{episode_no:02d}",
+                                f"{title} EP{episode_no:02d}",
+                            ]
+                        )
+                    for q in fallback_queries:
+                        collect_episode_entries(get_rss_for_query(q))
+                        if episode_entries:
+                            break
 
                 if episode_entries:
                     episode_entries.sort()

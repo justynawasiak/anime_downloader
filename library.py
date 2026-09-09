@@ -146,6 +146,15 @@ class Library:
             except qbittorrentapi.LoginFailed as e:
                 print(f"qBittorrent login failed: {e}")
                 return
+
+            def is_conflict_error(err):
+                # qBittorrent returns HTTP 409 Conflict for duplicates in some cases.
+                status = getattr(err, "status_code", None) or getattr(getattr(err, "response", None), "status_code", None)
+                if status == 409:
+                    return True
+                message = str(err) or ""
+                return "Conflict" in message or "409" in message
+
             for entry in self.entries:
                 if getattr(entry, "status", "").lower() not in {"current", "planned"}:
                     continue
@@ -164,4 +173,6 @@ class Library:
                                 getattr(getattr(entry, "anime", None), "canonical_title", "?"),
                             ))
                         except Exception as e:
+                            if is_conflict_error(e):
+                                continue
                             print(f"Error adding torrent to qBittorrent: {e}")

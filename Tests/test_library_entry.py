@@ -1,9 +1,47 @@
 from unittest import mock
 
 import requests_mock
+import pytest
+from types import SimpleNamespace
 
 import rssEntry
 from libraryEntry import LibraryEntry
+
+
+def test_search_fills_older_gap_without_querying_future_episodes():
+    entry = LibraryEntry.__new__(LibraryEntry)
+    entry.progress = 0
+    entry.anime = SimpleNamespace(episode_count=12, is_movie=False)
+
+    def release(episode):
+        return SimpleNamespace(title=f'Example S02E{episode:02d}', link='unused',
+                               nyaa_infohash=str(episode), nyaa_seeders='2')
+
+    latest = release(2)
+    older = release(1)
+    with mock.patch.object(entry, '_fetch_rss_entries', side_effect=[[latest], [older]]) as fetch:
+        found = entry._rss_find_entries_by_titles(['Example Season 2'])
+    assert [episode.rss_title for episode in found] == [older.title, latest.title]
+    assert fetch.call_count == 2
+
+
+def test_search_does_not_query_episodes_for_unmatched_feed():
+    entry = LibraryEntry.__new__(LibraryEntry)
+    entry.progress = 0
+    entry.anime = SimpleNamespace(episode_count=24, is_movie=False)
+    with mock.patch.object(entry, '_fetch_rss_entries', return_value=[
+            SimpleNamespace(title='Unrelated S02E01')]) as fetch:
+        assert entry._rss_find_entries_by_titles(['Example Season 2']) == []
+    assert fetch.call_count == 1
+
+
+def test_rss_rate_limit_stops_entry():
+    entry = LibraryEntry.__new__(LibraryEntry)
+    entry.session = mock.Mock()
+    entry.session.get.return_value.status_code = 429
+    with pytest.raises(RuntimeError, match='429'):
+        entry._fetch_rss_entries('https://nyaa.si/?page=rss')
+    assert entry.session.get.call_args.kwargs['allow_redirects'] is False
 
 
 def test_library_entry(library_entry_json):
